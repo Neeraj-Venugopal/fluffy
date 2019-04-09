@@ -36,14 +36,20 @@ import java.io.UnsupportedEncodingException;
 public class FileOperationDownloadClient {
     public static void main(String[] args) throws InterruptedException {
       //  final CountDownLatch done = new CountDownLatch(1);
-
-        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
+  //Send Download Request to Super Node 
+  ManagedChannel channel = ManagedChannelBuilder.forAddress("192.168.0.9", 9000).usePlaintext(true).build();
+  
+   //Send Download Request to Cluster Master Server ( Running on same machine as client during testing) 
+  // ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
+  
+  
         FileserviceGrpc.FileserviceBlockingStub stub = FileserviceGrpc.newBlockingStub(channel);
 
         // String temp = "Download File";
         // byte[] fn = temp.getBytes();
-        String filename = "Clouds_and_Blue_Sky_CCBY_NatureClip.mp4";
-        FileInfo bld = FileInfo.newBuilder().setUsername("Test_User").setFilename(filename).build();
+      //  String filename = "Video Sample - 1GB.mp4";
+      String filename = "";
+        FileInfo bld = FileInfo.newBuilder().setUsername("bigtest").setFilename("bigtest.m4v").build();
 
         Iterator<FileData> features = stub.downloadFile(bld);
         while (features.hasNext()) {
@@ -56,7 +62,7 @@ public class FileOperationDownloadClient {
 	          {
 		
 	            	System.out.println("Saving to file");
-			         BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(filename,true));
+			         BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream("text.txt",true));
    		      	 out.write(filedat.getData().toByteArray());
                 out.close();
 		}

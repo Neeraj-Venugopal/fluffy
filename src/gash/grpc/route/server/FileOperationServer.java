@@ -71,141 +71,140 @@ public class FileOperationServer extends FileserviceImplBase{
     HashMap<String, String> fileMetaData = new HashMap<String,String>();
     HashMap<String, String> downloadFileMetaData = new HashMap<String,String>();
     private static boolean shard_replicate = true;
-    
-    @Override
-    public StreamObserver<FileData> uploadFile(final StreamObserver<ack> responseObserver){
-        System.out.println("Upload File Functionality called in File Operation Server");
-        return new StreamObserver<FileData>(){
-             boolean meta = false;
- 
-        String primaryip = "";
-        String replicatedip ="";
-            @Override
-            public void onNext(FileData filedata1) {
-              String byteDataStr="";
-              try{
-               
-               if(checkLeader == true){
-                    //For First Sequence Sort IPs w.r.t Min. Utilization and create fileMetaData HashMap
-                   if(filedata1.getSeq()==1)
-                    {
-                       slaveList = MainServer.slaveServerStatusList;
-                       System.out.println("SlaveListSize: "+slaveList.size());
-                       for(int i = 0 ; i<slaveList.size(); i++)
-                       {
-                           System.out.println("Slave List IP : " +slaveList.get(i).get("ipAddress") );
-                           ip_cpu.put(slaveList.get(i).get("ipAddress"), Double.parseDouble(slaveList.get(i).get("cpuUsage")));
-                       }   
+   
+ @Override
+ public StreamObserver<FileData> uploadFile(final StreamObserver<ack> responseObserver){
+    System.out.println("Upload File Functionality called in File Operation Server");
+    return new StreamObserver<FileData>(){
+        boolean meta = false;
+        String primaryip = "", replicatedip ="";
+        
+        @Override
+        public void onNext(FileData filedata1) {
+            String byteDataStr="";
+            try{
+                //If Leader Server
+                if(checkLeader == true){
+                  //For First Sequence Sort IPs w.r.t Min. Utilization and create fileMetaData HashMap
+                  if(filedata1.getSeq()==1)
+                  {
+                      slaveList = MainServer.slaveServerStatusList;
+                      System.out.println("SlaveListSize: "+slaveList.size());
+                      for(int i = 0 ; i<slaveList.size(); i++)
+                      {
+                        System.out.println("Slave List IP : " +slaveList.get(i).get("ipAddress") );
+                        ip_cpu.put(slaveList.get(i).get("ipAddress"), Double.parseDouble(slaveList.get(i).get("cpuUsage")));
+                      } 
 
-                        sorted_ip_cpu = new TreeMap<String, Double>(ip_cpu);
-                       if(sorted_ip_cpu.size()<=1)
-                            shard_replicate = false;
-                       else
-                            shard_replicate = true;
+                      sorted_ip_cpu = new TreeMap<String, Double>(ip_cpu);
+                      if(sorted_ip_cpu.size()<=1)
+                      shard_replicate = false;
+                      else
+                      shard_replicate = true;
 
                       fileMetaData = new HashMap<String,String>();
                       
                       fileMetaData.put("username", filedata1.getUsername());
                       fileMetaData.put("filename", filedata1.getFilename());
                       meta = true;
-                  
-                      
+                  }
+                  //For every other sequence retrieve existing fileMetaData
+                  else { 
+                    for(int i = 0; i<metaData.size();i++)
+                    {
+                      if(metaData.get(i).get("username").equals(filedata1.getUsername()) && metaData.get(i).get("filename").equals(filedata1.getFilename()))
+                      {
+                        fileMetaData = metaData.get(i);
+                        break;
+                      }
                     }
-                    //For every other sequence retrieve existing fileMetaData
-                    else if (shard_replicate /*&& filedata1.getSeq()%250 ==0*/){
-                      
-                        
-                        for(int i = 0; i<metaData.size();i++)
-                        {
-                          if(metaData.get(i).get("username").equals(filedata1.getUsername()) && metaData.get(i).get("filename").equals(filedata1.getFilename()))
-                            {
-                              fileMetaData = metaData.get(i);
-                              break;
-                            }
-                          
-                        }
-                        //Set Primary/Replicated Index for Selecting Primary/Secondary IP for Current Sequence of File
-                       System.out.println("Sorted Array Size: " + sorted_ip_cpu.size());
+                    //Sharding for files >= 500mb
+                    //Set Primary/Replicated Index for Selecting Primary/Secondary IP for Current Sequence of File
+                    if (shard_replicate && filedata1.getSeq()%250 ==0)
+                    {
+                        System.out.println("Sorted Array Size: " + sorted_ip_cpu.size());
 
-                       if(primaryindex + 1 == sorted_ip_cpu.size())
-                           primaryindex = 0;
-                       else
-                           primaryindex++;
+                        if(primaryindex + 1 == sorted_ip_cpu.size())
+                          primaryindex = 0;
+                        else
+                          primaryindex++;
 
-                       System.out.println("Primary index: " + primaryindex);
-                       if(replicatedindex + 1 == sorted_ip_cpu.size())
+                        System.out.println("Primary index: " + primaryindex);
+                        if(replicatedindex + 1 == sorted_ip_cpu.size())
                           replicatedindex = 0;
-                       else
+                        else
                           replicatedindex++;
                         
-                       meta = true;
+                        meta = true;
+    
+                    }
+                  }
+
+                  //Set Primary, Replicated IP to send to
+                
+                  primaryip = sorted_ip_cpu.keySet().toArray()[primaryindex].toString();
+                  System.out.println("Primary ip: " + primaryip);
+                  if(shard_replicate)
+                        replicatedip = sorted_ip_cpu.keySet().toArray()[replicatedindex].toString();
                   
-                      }
+                  //Set primary and secondary ip for chunk in metadata
+                  //Edit meta for each new chunk
+                  if(meta)
+                  {
+                    int id;
+                    if(shard_replicate)
+                      id = filedata1.getSeq() / 250 + 1;
+                    else 
+                      id = 1;
+                    fileMetaData.put("primaryip_"+id,primaryip);
 
+                    if(shard_replicate)
+                      fileMetaData.put("replicatedip_"+id,replicatedip);
+                  }
 
-                    //Set Primary, Replicated IP to send to
-                     
-                     primaryip = sorted_ip_cpu.keySet().toArray()[primaryindex].toString();
-                     System.out.println("Primary ip: " + primaryip);
-                     if(shard_replicate)
-			                   replicatedip = sorted_ip_cpu.keySet().toArray()[replicatedindex].toString();
-                     
-                      //Set primary and secondary ip for chunk in metadata
-                      if(meta)
-                      {
-                        int id;
-                          if(shard_replicate)
-                            id = filedata1.getSeq() ;// / 250 + 1;
-                          else 
-                            id = 1;
-                          fileMetaData.put("primaryip_"+id,primaryip);
-
-                          if(shard_replicate)
-                            fileMetaData.put("replicatedip_"+id,replicatedip);
-                      }
-
-                    System.out.println("Primary IP: "+ primaryip);
-                    String reachPrimarySlave = MasterToSlaveCommunication.uploadFiles(filedata1.getFilename(), filedata1.getUsername(), primaryip.split(":")[0], Integer.parseInt(primaryip.split(":")[1]), filedata1.getSeq(), filedata1.getData());
-
-                   // if (shard_replicate)
-                    //    String reachReplicatedSlave = MasterToSlaveCommunication.uploadFiles(filedata1.getFilename(), filedata1.getUsername(), replicatedip.split(":")[0], Integer.parseInt(replicatedip.split(":")[1]), filedata1.getSeq(), filedata1.getData());
-               
-                //  String reachSlave = MasterToSlaveCommunication.uploadFiles(filedata1.getFilename(), filedata1.getUsername(), "10.192.168.20", 1234, filedata1.getSeq(), filedata1.getData());
-               }
-               else{
-                System.out.println("Upload File Called" + " | File Name: " + filedata1.getFilename() + " | User Name: " + filedata1.getUsername() + " | Sequence Number: " + filedata1.getSeq() + " | Destination IP: " + "localhost");
-                byte[] tempByte = filedata1.getData().toByteArray();
-              //  byteDataStr = new String(filedata1.getData().toByteArray(), "UTF-8");
-              byteDataStr = Base64.getEncoder().encodeToString(tempByte);
-                // Data Base Operation to happen here.
-                JedisImplementation jedis = new JedisImplementation(byteDataStr, filedata1.getFilename(), filedata1.getUsername(), filedata1.getSeq());
-                jedis.setData();
-               // throw new UnsupportedEncodingException("Exception");
+                  System.out.println("Primary IP: "+ primaryip);
+                  String reachPrimarySlave = MasterToSlaveCommunication.uploadFiles(filedata1.getFilename(), filedata1.getUsername(), primaryip.split(":")[0], Integer.parseInt(primaryip.split(":")[1]), filedata1.getSeq(), filedata1.getData());
+                  String reachReplicatedSlave = "";
+                  //If more than 1 slave ip is active - send to replicated ip
+                  if (shard_replicate)
+                     reachReplicatedSlave = MasterToSlaveCommunication.uploadFiles(filedata1.getFilename(), filedata1.getUsername(), replicatedip.split(":")[0], Integer.parseInt(replicatedip.split(":")[1]), filedata1.getSeq(), filedata1.getData());
+                  
+                  // String reachSlave = MasterToSlaveCommunication.uploadFiles(filedata1.getFilename(), filedata1.getUsername(), "10.192.168.20", 1234, filedata1.getSeq(), filedata1.getData());
+                }
+                else{
+                  System.out.println("Upload File Called" + " | File Name: " + filedata1.getFilename() + " | User Name: " + filedata1.getUsername() + " | Sequence Number: " + filedata1.getSeq() + " | Destination IP: " + "localhost");
+                  byte[] tempByte = filedata1.getData().toByteArray();
+                  // byteDataStr = new String(filedata1.getData().toByteArray(), "UTF-8");
+                  byteDataStr = Base64.getEncoder().encodeToString(tempByte);
+                  // Data Base Operation to happen here.
+                  JedisImplementation jedis = new JedisImplementation(byteDataStr, filedata1.getFilename(), filedata1.getUsername(), filedata1.getSeq());
+                  jedis.setData();
+                  // throw new UnsupportedEncodingException("Exception");
+                  }
             }
-          }
-              // }catch(UnsupportedEncodingException e){
-              //   System.out.println(e);
-              // }
-              catch(InterruptedException e){
-                  e.printStackTrace();
-              }
-              //System.out.println(byteDataStr);
+                // }catch(UnsupportedEncodingException e){
+                // System.out.println(e);
+                // }
+            catch(InterruptedException e){
+            e.printStackTrace();
             }
-    
-            @Override
-            public void onError(Throwable t) {
-              
-            }
-    
-            @Override
-            public void onCompleted() {
-              metaData.add(fileMetaData);
-              responseObserver.onNext(ack.newBuilder().setMessage("This is a test").setSuccess(true).build());
-              responseObserver.onCompleted();
-              //responseObserver.onCompleted();
-            }
-        };
-    }
+            //System.out.println(byteDataStr);
+        }
+ 
+      @Override
+      public void onError(Throwable t) {
+      
+      }
+      
+      @Override
+      public void onCompleted() {
+          metaData.add(fileMetaData);
+          responseObserver.onNext(ack.newBuilder().setMessage("This is a test").setSuccess(true).build());
+          responseObserver.onCompleted();
+          //responseObserver.onCompleted();
+      }
+    };
+ }  
 
     // Downlod File
     @Override
@@ -238,6 +237,7 @@ public class FileOperationServer extends FileserviceImplBase{
            // System.out.println("Trying to send File");
            fileservice.FileData rtn = fileDataBuilder.build();
             try{
+
               Thread.sleep(1000);
             }
             catch(InterruptedException e){
@@ -258,8 +258,9 @@ public class FileOperationServer extends FileserviceImplBase{
    
         System.out.println("Got a Download Request from Client, Passing on to Server");
           //Read MetaData to get which ip(s) to forward request tobyteDataStr
-     String ip = "";
-        System.out.println("META Size:"+metaData.size());
+      String primaryip = "", replicatedip = "", selectedip = "";
+      boolean sendToPrimary = false;
+        System.out.println("Current MetaData Size:"+metaData.size());
       for(int i = 0; i<metaData.size();i++)
         {
             if(metaData.get(i).get("username").equals(request.getUsername()) && metaData.get(i).get("filename").equals(request.getFilename()))
@@ -277,18 +278,39 @@ public class FileOperationServer extends FileserviceImplBase{
       
        for(int j = 1;j<=downloadFileMetaData.size()-2; j++)
        {
-         //Check if primary ip is active //for(int i = 0; i<MainServer.slaveServerStatusList.size(); i++)
-         //If active send request to primary, if not send request to replicated
-           
-           //In downloadfilemetadata, get primary ip of each chunk and retrieve all sequences from that ip
-           ip = downloadFileMetaData.get("primaryip_"+j);
-           System.out.println("Sending to IP: "+ip);
-           if(!ip.equals(null))
+          //In downloadfilemetadata, get primaryip and replciatedip of each chunk and retrieve all sequences from that ip
+          primaryip = downloadFileMetaData.get("primaryip_"+j);
+          System.out.println("Primary IP Set: "+primaryip);
+
+          replicatedip = downloadFileMetaData.get("replicatedip_"+j);
+          System.out.println("Replicated IP Set: "+replicatedip);
+          
+           if(!primaryip.equals(null))
            {
-            try{
+              //Check if primary ip is active 
+              //If active send request to primary, if not send request to replicated
+
+              for(int i = 0; i<MainServer.slaveServerStatusList.size(); i++)
+              {
+                  if(MainServer.slaveServerStatusList.get(i).get("ipAddress").equals(primaryip))
+                  {
+                    selectedip = primaryip;
+                    System.out.println("Will send request to primary ip: "+ selectedip);
+                    sendToPrimary = true;
+                    break;
+                  }
+              }
+
+              if(!sendToPrimary && !replicatedip.equals(null))
+              {
+                selectedip = replicatedip;
+                System.out.println("Will send request to replicated ip: "+ selectedip);
+              }
+ 
+              try{
                   int seq = 0;
                   
-                  ArrayList<ByteString> payload = MasterToSlaveCommunication.downloadFiles(request.getFilename(), request.getUsername(), ip.split(":")[0],Integer.parseInt(ip.split(":")[1]));
+                  ArrayList<ByteString> payload = MasterToSlaveCommunication.downloadFiles(request.getFilename(), request.getUsername(), selectedip.split(":")[0],Integer.parseInt(selectedip.split(":")[1]));
                   
                   for(int i = 0; i < payload.size(); i++) {
                      seq++;

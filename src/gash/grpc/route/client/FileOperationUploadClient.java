@@ -49,11 +49,16 @@ public class FileOperationUploadClient {
     private static BufferedInputStream in;
     public static int count = 1;
     public static int chunks = 1;
+    public static int counter = 1;
 
     public static void main(String[] args) throws InterruptedException {
         final CountDownLatch done = new CountDownLatch(1);
-        
-        ManagedChannel channel = ManagedChannelBuilder.forAddress("10.192.168.20", 2345).usePlaintext(true).build();
+         //Send Upload Request to Super Node 
+       ManagedChannel channel = ManagedChannelBuilder.forAddress("192.168.0.9", 9000).usePlaintext(true).build();
+ 
+     //Send Upload Request to Cluster Master Server ( Running on same machine as client during testing)
+   // ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
+    
         FileserviceGrpc.FileserviceBlockingStub stub = FileserviceGrpc.newBlockingStub(channel);
 
         FileserviceGrpc.FileserviceStub stub1 = FileserviceGrpc.newStub(channel);
@@ -73,7 +78,7 @@ public class FileOperationUploadClient {
                         while (requestStream.isReady()) {
                             System.out.println("Inside requeststream while loop");
                             FileInputStream fis = null;
-                            File file =new File("src/gash/grpc/route/client/fileSamples/Clouds_and_Blue_Sky_CCBY_NatureClip.mp4");
+                            File file =new File("src/gash/grpc/route/client/fileSamples/test.txt");
                             try{
                                 fis = new FileInputStream(file);
                                 // Reading 2 mb at a time
@@ -92,13 +97,20 @@ public class FileOperationUploadClient {
                                     System.out.println("Sequence Number is:" + seq);
                                     FileData request = FileData.newBuilder()
                                                                 .setFilename(file.getName())
-                                                                .setUsername("Test_User")
+                                                                .setUsername("Team_7")
                                                                 .setSeq(seq)
                                                                 .setData(ByteString.copyFrom(raw, 0, n)).build();
                                                                                                                                 
                                                             // .setFilename("test.txt")
                                     requestStream.onNext(request);
+                                    try
+                                    {
+                                        Thread.sleep(1000);
+                                    }
+                                    catch(InterruptedException E)
+                                    {
 
+                                    }
                                     /*if(fis.available() > 0){
                                         done = false;
                                     }else{
@@ -146,7 +158,11 @@ public class FileOperationUploadClient {
         };
        
         fileservice.FileData.Builder bld = FileData.newBuilder();
-        stub1.uploadFile(testObserver);
+      //  for(int i = 1; i<=100; i++)
+       // {
+             stub1.uploadFile(testObserver);
+           //  counter++;
+       // }
        // stub1.uploadFile(testObserver);
        // stub1.uploadFile(testObserver);
         done.await();

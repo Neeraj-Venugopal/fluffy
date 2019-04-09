@@ -218,8 +218,8 @@ public class MainServer{
                         bld.setIp("192.168.0.51");
                         bld.setPort("2345");
     
-                        int randomInt = new Random().nextInt(100);
-                        bld.setClusterName("Team_7_" + randomInt);
+                       // int randomInt = new Random().nextInt(100);
+                        bld.setClusterName("Team_7");
     
                         ack acknowledgement = stub.getLeaderInfo(bld.build());
                         System.out.println("Acknowledgment Success is: " + acknowledgement.getSuccess());
