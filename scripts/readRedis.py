@@ -7,19 +7,21 @@ from cassandra.query import BatchStatement
 cluster = Cluster(['localhost'])
 session = cluster.connect('FluffyClientData')
 
-session.execute("CREATE TYPE RedisData (payload text, origin text, path text)")
+session.execute("CREATE TYPE RedisData (data text, fileName text, userName text, sequenceNumber text)")
 session.execute("CREATE TABLE storeClientPayload (key text PRIMARY KEY, data frozen<RedisData>)")
 
 class Data(object):
     """docstring for ClassName"""
-    def __init__(self, payload, path, origin):
-        self.payload = payload
-        self.path = path
-        self.origin = origin
-        
+    """Creating an object for the data present in redis"""
+    def __init__(self, data, fileName, userName, sequenceNumber):
+        self.data = data
+        self.fileName = fileName
+        self.userName = userName
+        self.sequenceNumber = sequenceNumber
 
 user_track_stmt = session.prepare(
     "INSERT INTO storeClientPayload (key, data) VALUES (?, ?)")
+
 
 # add the prepared statements to a batch
 batch = BatchStatement()
@@ -37,16 +39,19 @@ redisClient = redis.Redis(host='localhost', port=6379, db=0)
 
 keys = redisClient.keys('*')
 for key in keys:
+	
     type = redisClient.type(key)
     # if type == KV:
     #     val = redis.get(key)
     # if type == "HASH":
 
     # vals = redisClient.hgetall(key)
-    payload = redisClient.hget(key,"payload")
-    origin = redisClient.hget(key,"origin")
-    path = redisClient.hget(key,"path")
-    session.execute(user_track_stmt,[key,Data(payload,path,origin)])
+    data = redisClient.hget(key,"data")
+    fileName = redisClient.hget(key,"fileName")
+    userName = redisClient.hget(key,"userName")
+    sequenceNumber = redisClient.hget(key,"sequenceNumber")
+
+    session.execute(user_track_stmt,[key,Data(data,fileName,userName,sequenceNumber)])
     print(vals)
 
     # if type == ZSET:
