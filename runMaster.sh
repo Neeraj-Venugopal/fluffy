@@ -18,7 +18,7 @@ JAVA_ARGS="$*"
 echo -e "\n** config: ${JAVA_ARGS} **\n"
 
 # superceded by http://www.oracle.com/technetwork/java/tuning-139912.html
-JAVA_TUNE='-server -Xms500m -Xmx2000m'
+JAVA_TUNE='-server -Xms500m -Xmx5000m'
 
 
 java ${JAVA_TUNE} -cp .:${SVR_HOME}/lib/'*':${SVR_HOME}/classes ${JAVA_MAIN} ${JAVA_ARGS}

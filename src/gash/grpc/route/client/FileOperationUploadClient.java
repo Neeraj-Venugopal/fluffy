@@ -44,6 +44,8 @@ import java.util.Arrays;
 import java.lang.Math;
 import fileservice.ack;
 
+import java.lang.*;
+
 public class FileOperationUploadClient {
     public static int globalFile = 1;
     private static BufferedInputStream in;
@@ -54,10 +56,11 @@ public class FileOperationUploadClient {
     public static void main(String[] args) throws InterruptedException {
         final CountDownLatch done = new CountDownLatch(1);
          //Send Upload Request to Super Node 
-       ManagedChannel channel = ManagedChannelBuilder.forAddress("192.168.0.9", 9000).usePlaintext(true).build();
+         long startTime = System.nanoTime();
+       //ManagedChannel channel = ManagedChannelBuilder.forAddress("192.168.0.9", 9000).usePlaintext(true).build();
  
      //Send Upload Request to Cluster Master Server ( Running on same machine as client during testing)
-   // ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
     
         FileserviceGrpc.FileserviceBlockingStub stub = FileserviceGrpc.newBlockingStub(channel);
 
@@ -72,13 +75,16 @@ public class FileOperationUploadClient {
 
 
                 requestStream.setOnReadyHandler(new Runnable() {
+                    // Provide File name and User Name
 
                     @Override
                     public void run() { 
                         while (requestStream.isReady()) {
                             System.out.println("Inside requeststream while loop");
                             FileInputStream fis = null;
-                            File file =new File("src/gash/grpc/route/client/fileSamples/test.txt");
+                            File file =new File("src/gash/grpc/route/client/fileSamples/1mb.avi");
+                            //File file =new File("src/gash/grpc/route/client/fileSamples/SampleAudio_0.4mb.mp3");
+                            
                             try{
                                 fis = new FileInputStream(file);
                                 // Reading 2 mb at a time
@@ -105,7 +111,7 @@ public class FileOperationUploadClient {
                                     requestStream.onNext(request);
                                     try
                                     {
-                                        Thread.sleep(1000);
+                                        Thread.sleep(100);
                                     }
                                     catch(InterruptedException E)
                                     {
@@ -139,7 +145,6 @@ public class FileOperationUploadClient {
             @Override
             public void onCompleted() {
                 System.out.println("Completed");
-                System.out.println("Count Value is: " + count);
                 done.countDown();
             }
 
@@ -168,5 +173,12 @@ public class FileOperationUploadClient {
         done.await();
         channel.shutdown();
         channel.awaitTermination(1, TimeUnit.SECONDS);
+        long endTime   = System.nanoTime();
+        long totalTime = endTime - startTime;
+
+        double execTime = totalTime/1000000;
+        System.out.println("Total Time in seconds: " + Math.round(execTime));
+        System.out.printf("Value: %.6f", execTime);
+
     }
 }

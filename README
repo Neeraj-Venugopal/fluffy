@@ -1,16 +1,73 @@
-build the gRPC/protobuf (proto3) classes from the .proto. 
+Following Project is a Distributed System capable of performing CRUD Operations over a Node.
+The Project implements Replication across Slave Servers and Sharding of data.
 
-This project/lab provides you with an example of building a gRPC client and server using
-packages you download onto your computer - in otherwords, we don't use #*$! maven!
+The System uses GRPC server. The Programs are written in java
 
-Again, this does not use maven. The purpose is for you to understand the magic that went 
-into building the binary for a java server. This is critical when controling a server
-environment.
+The Proto Files are present in resources Directory
 
-Steps:
+run the shell script - build_pb.sh to generate the equivalent java files for proto.
+This is stored in generated folder.
 
-1. Download the gRPC java codegen plugin from: https://github.com/grpc/grpc-java
-2. Build as instructed
-3. Save/Copy built plugin to your general toolset (e.g., /usr/local/blah)
-4. Modify the protoc paths in the build_pb.sh to match your toolset
+To Run the Main Server - ./runMaster.sh 1234 t 2345
+To Run the Slave Server - ./runMaster.sh 1234 f 2345
 
+To Run Upload File - ./runFileUploadClient.sh
+To Run Download File - ./runDownLoadClient.sh
+
+The Uploaded Data will be present in REDIS database
+A backup Database is used, which is Cassandra. This is used to retrive data if the node shutsdown
+
+After performing any changes to code perform ant build to generate class files
+
+Project Structure
+.
+├── build_pb.sh
+├── build.xml
+├── checkLeaderServerStats.sh
+├── conf
+│   ├── server.conf
+│   └── serverIPAddressPool.txt
+├── README
+├── resources
+│   ├── fileService.proto
+│   ├── heartbeat.proto
+│   └── route.proto
+├── runDownLoadClient.sh
+├── runFileUploadClient.sh
+├── runHeartBeatClient.sh
+├── runHeartBeatServer.sh
+├── runMaster.sh
+├── runTestMaster.sh
+├── scripts
+│   ├── addServerIp.sh
+│   ├── cpuUtilization.py
+│   ├── readRedis.py
+│   └── refreshServerList.sh
+├── src
+│   └── gash
+│       └── grpc
+│           └── route
+│               ├── client
+│               │   ├── FileOperationDownloadClient.java
+│               │   ├── FileOperationUploadClient.java
+│               │   ├── GetMainServerStatus.java
+│               │   ├── HeartBeatClient.java
+│               │   └── TestFileSearch.java
+│               └── server
+│                   ├── CheckHeartBeat.java
+│                   ├── FileOperationServer.java
+│                   ├── HeartBeatServer.java
+│                   ├── IPChecker.java
+│                   ├── JedisImplementation.java
+│                   ├── MainServer.java
+│                   ├── MasterToSlaveCommunication.java
+│                   ├── NetworkFileChecker.java
+│                   ├── SystemInfo.java
+│                   ├── TestDownloadFile.java
+│                   ├── TestFileOperationServer.java
+│                   ├── TestFileStreamFromClient.java
+│                   ├── TestHeartBeatServer.java
+│                   └── TestMain.java
+└── text.txt
+
+9 directories, 39 files

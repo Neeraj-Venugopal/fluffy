@@ -238,7 +238,7 @@ public class FileOperationServer extends FileserviceImplBase{
            fileservice.FileData rtn = fileDataBuilder.build();
             try{
 
-              Thread.sleep(1000);
+              Thread.sleep(10);
             }
             catch(InterruptedException e){
               e.printStackTrace();

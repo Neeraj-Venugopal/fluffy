@@ -37,10 +37,12 @@ public class FileOperationDownloadClient {
     public static void main(String[] args) throws InterruptedException {
       //  final CountDownLatch done = new CountDownLatch(1);
   //Send Download Request to Super Node 
-  ManagedChannel channel = ManagedChannelBuilder.forAddress("192.168.0.9", 9000).usePlaintext(true).build();
+  //ManagedChannel channel = ManagedChannelBuilder.forAddress("192.168.0.9", 9000).usePlaintext(true).build();
   
    //Send Download Request to Cluster Master Server ( Running on same machine as client during testing) 
-  // ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
+   long startTime = System.nanoTime();
+
+   ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 2345).usePlaintext(true).build();
   
   
         FileserviceGrpc.FileserviceBlockingStub stub = FileserviceGrpc.newBlockingStub(channel);
@@ -48,8 +50,13 @@ public class FileOperationDownloadClient {
         // String temp = "Download File";
         // byte[] fn = temp.getBytes();
       //  String filename = "Video Sample - 1GB.mp4";
+      String userName = "Test_User";
+      String videoName = "Video Sample - 1GB.mp4";
       String filename = "";
-        FileInfo bld = FileInfo.newBuilder().setUsername("bigtest").setFilename("bigtest.m4v").build();
+      // Provide File name and User Name
+      FileInfo bld = FileInfo.newBuilder().setUsername("Team_7").setFilename("1mb.avi").build();
+      //FileInfo bld = FileInfo.newBuilder().setUsername(userName).setFilename(videoName).build();
+
 
         Iterator<FileData> features = stub.downloadFile(bld);
         while (features.hasNext()) {
@@ -79,5 +86,12 @@ public class FileOperationDownloadClient {
         }
         channel.shutdown();
         // After Download the Client will exit.. It shutdowns the channel
+        long endTime   = System.nanoTime();
+        long totalTime = endTime - startTime;
+
+        double execTime = (double)totalTime/1000000;
+        System.out.println("Total Time in milli seconds: " + Math.round(execTime));
+        System.out.printf("Value: %.6f", execTime);
     }
+    
 }    
